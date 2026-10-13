@@ -10,6 +10,10 @@ import com.example.plantcarecompanion.data.local.entity.CareLogEntry
 import com.example.plantcarecompanion.data.local.entity.Plant
 import kotlinx.coroutines.launch
 
+enum class PlantSortOption {
+    RECENTLY_ADDED,
+    NAME_A_TO_Z
+}
 class PlantCareViewModel(
     private val plantDao: PlantDao,
     private val careLogDao: CareLogDao
@@ -20,6 +24,20 @@ class PlantCareViewModel(
 
     var careLogs by mutableStateOf(listOf<CareLogEntry>())
         private set
+
+    var selectedPlant by mutableStateOf<Plant?>(null)
+        private set
+
+    var searchQuery by mutableStateOf("")
+        private set
+
+    var sortOption by mutableStateOf(PlantSortOption.RECENTLY_ADDED)
+        private set
+
+    val lastWateredEntry: CareLogEntry?
+        get() = careLogs.firstOrNull { entry ->
+            entry.careType.equals("Watered", ignoreCase = true)
+        }
 
     init {
         refreshPlants()
@@ -44,6 +62,10 @@ class PlantCareViewModel(
         refreshPlants()
     }
 
+    fun loadPlant(plantId: Int) = viewModelScope.launch {
+        selectedPlant = plantDao.getById(plantId)
+    }
+
     fun loadCareLogs(plantId: Int) = viewModelScope.launch {
         careLogs = careLogDao.getForPlant(plantId)
     }
@@ -62,4 +84,31 @@ class PlantCareViewModel(
         careLogDao.delete(entry)
         loadCareLogs(entry.plantId)
     }
+    fun updateSearchQuery(query: String) {
+        searchQuery = query
+    }
+
+    fun updateSortOption(option: PlantSortOption) {
+        sortOption = option
+    }
+
+    val filteredPlants: List<Plant>
+        get() {
+            val filtered = if (searchQuery.isBlank()) {
+                plants
+            } else {
+                plants.filter { plant ->
+                    plant.nickname.contains(searchQuery, ignoreCase = true) ||
+                            plant.speciesName.contains(searchQuery, ignoreCase = true)
+                }
+            }
+
+            return when (sortOption) {
+                PlantSortOption.RECENTLY_ADDED ->
+                    filtered.sortedByDescending { it.dateAdded }
+
+                PlantSortOption.NAME_A_TO_Z ->
+                    filtered.sortedBy { it.nickname.lowercase() }
+            }
+        }
 }

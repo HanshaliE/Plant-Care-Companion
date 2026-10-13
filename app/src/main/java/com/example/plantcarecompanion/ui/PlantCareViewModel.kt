@@ -92,15 +92,6 @@ class PlantCareViewModel(
         loadCareLogs(entry.plantId)
     }
 
-    fun updateCareLog(entry: CareLogEntry) = viewModelScope.launch {
-        careLogDao.update(entry)
-        loadCareLogs(entry.plantId)
-    }
-
-    fun deleteCareLog(entry: CareLogEntry) = viewModelScope.launch {
-        careLogDao.delete(entry)
-        loadCareLogs(entry.plantId)
-    }
     fun updateSearchQuery(query: String) {
         searchQuery = query
     }

@@ -57,6 +57,9 @@ fun PlantCareApp() {
                 },
                 onEditClick = { plantId ->
                     navController.navigate(EditPlant(plantId))
+                },
+                onDeleted = {
+                    navController.popBackStack()
                 }
             )
         }

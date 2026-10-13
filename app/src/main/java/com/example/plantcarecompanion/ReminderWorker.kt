@@ -19,15 +19,31 @@ class ReminderWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
+        val title = inputData.getString("title")
+        val notes = inputData.getString("notes")
+
+        if (title != null) {
+            showNotification(
+                notificationId = System.currentTimeMillis().toInt(),
+                contentTitle = title,
+                contentText = notes?.takeIf { it.isNotBlank() } ?: "Tap to open Plant Care"
+            )
+            return Result.success()
+        }
+
         val plantName = inputData.getString("plantName") ?: return Result.failure()
         val plantId = inputData.getInt("plantId", -1)
 
-        showNotification(plantName, plantId)
+        showNotification(
+            notificationId = plantId,
+            contentTitle = "Time to water $plantName",
+            contentText = "Tap to open Plant Care and log it"
+        )
         return Result.success()
     }
 
     @SuppressLint("MissingPermission")
-    private fun showNotification(plantName: String, plantId: Int) {
+    private fun showNotification(notificationId: Int, contentTitle: String, contentText: String) {
         val channelId = "watering_reminders"
         val manager = applicationContext.getSystemService(NotificationManager::class.java)
 
@@ -43,8 +59,8 @@ class ReminderWorker(
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
-            .setContentTitle("Time to water $plantName")
-            .setContentText("Tap to open Plant Care and log it")
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
             .setAutoCancel(true)
             .build()
 
@@ -54,7 +70,7 @@ class ReminderWorker(
                 applicationContext, Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            NotificationManagerCompat.from(applicationContext).notify(plantId, notification)
+            NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
         }
     }
 }

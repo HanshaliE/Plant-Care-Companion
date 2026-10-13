@@ -2,6 +2,7 @@ package com.example.plantcarecompanion
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -28,5 +29,19 @@ class ReminderScheduler(private val context: Context) {
 
     fun cancelReminder(plantId: Int) {
         WorkManager.getInstance(context).cancelUniqueWork("reminder_$plantId")
+    }
+
+    fun scheduleOneOff(title: String, notes: String, delayMinutes: Long) {
+        val data = workDataOf(
+            "title" to title,
+            "notes" to notes
+        )
+
+        val request = OneTimeWorkRequestBuilder<ReminderWorker>()
+            .setInitialDelay(delayMinutes, TimeUnit.MINUTES)
+            .setInputData(data)
+            .build()
+
+        WorkManager.getInstance(context).enqueue(request)
     }
 }

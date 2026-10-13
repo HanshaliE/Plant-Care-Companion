@@ -54,6 +54,8 @@ class PlantCareViewModel(
     var editLightRequirement by mutableStateOf("")
         private set
 
+    private var editingPlantId: Int? = null
+
     init {
         refreshPlants()
     }
@@ -149,6 +151,10 @@ class PlantCareViewModel(
         }
 
     fun prepareEditPlant(plant: Plant) {
+        if (editingPlantId == plant.id) return
+
+        editingPlantId = plant.id
+
         editNickname = plant.nickname
         editLocation = plant.location ?: ""
         editWateringInterval = plant.wateringIntervalDays.toString()

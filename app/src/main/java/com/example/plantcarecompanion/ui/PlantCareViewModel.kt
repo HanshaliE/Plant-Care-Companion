@@ -39,6 +39,9 @@ class PlantCareViewModel(
             entry.careType.equals("Watered", ignoreCase = true)
         }
 
+    var careLogNote by mutableStateOf("")
+        private set
+
     init {
         refreshPlants()
     }
@@ -90,6 +93,27 @@ class PlantCareViewModel(
 
     fun updateSortOption(option: PlantSortOption) {
         sortOption = option
+    }
+
+    fun updateCareLogNote(note: String) {
+        careLogNote = note
+    }
+
+
+    fun clearCareLogNote() {
+        careLogNote = ""
+    }
+
+    fun addCareAction(plantId: Int, careType: String) {
+        addCareLog(
+            CareLogEntry(
+                plantId = plantId,
+                careType = careType,
+                notes = careLogNote.trim().ifBlank { null }
+            )
+        )
+
+        clearCareLogNote()
     }
 
     val filteredPlants: List<Plant>

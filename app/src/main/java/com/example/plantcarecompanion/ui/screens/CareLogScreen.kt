@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,13 +45,22 @@ fun CareLogScreen(
         }
 
         item {
+            OutlinedTextField(
+                value = vm.careLogNote,
+                onValueChange = { note ->
+                    vm.updateCareLogNote(note)
+                },
+                label = { Text("Note (optional)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
             Button(
                 onClick = {
-                    vm.addCareLog(
-                        CareLogEntry(
-                            plantId = plantId,
-                            careType = "Watered"
-                        )
+                    vm.addCareAction(
+                        plantId = plantId,
+                        careType = "Watered"
                     )
                 }
             ) {
@@ -61,11 +71,9 @@ fun CareLogScreen(
         item {
             Button(
                 onClick = {
-                    vm.addCareLog(
-                        CareLogEntry(
-                            plantId = plantId,
-                            careType = "Fertilised"
-                        )
+                    vm.addCareAction(
+                        plantId = plantId,
+                        careType = "Fertilised"
                     )
                 }
             ) {
@@ -76,11 +84,9 @@ fun CareLogScreen(
         item {
             Button(
                 onClick = {
-                    vm.addCareLog(
-                        CareLogEntry(
-                            plantId = plantId,
-                            careType = "Pruned"
-                        )
+                    vm.addCareAction(
+                        plantId = plantId,
+                        careType = "Pruned"
                     )
                 }
             ) {
@@ -91,11 +97,9 @@ fun CareLogScreen(
         item {
             Button(
                 onClick = {
-                    vm.addCareLog(
-                        CareLogEntry(
-                            plantId = plantId,
-                            careType = "Repotted"
-                        )
+                    vm.addCareAction(
+                        plantId = plantId,
+                        careType = "Repotted"
                     )
                 }
             ) {

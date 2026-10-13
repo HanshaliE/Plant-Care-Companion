@@ -198,4 +198,8 @@ class PlantCareViewModel(
 
         return true
     }
+
+    fun cancelEditPlant() {
+        editingPlantId = null
+    }
 }

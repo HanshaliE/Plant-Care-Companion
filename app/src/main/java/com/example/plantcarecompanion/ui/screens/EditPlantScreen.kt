@@ -122,7 +122,10 @@ fun EditPlantScreen(
         Spacer(Modifier.height(8.dp))
 
         Button(
-            onClick = onBack,
+            onClick = {
+                vm.cancelEditPlant()
+                onBack()
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Cancel")

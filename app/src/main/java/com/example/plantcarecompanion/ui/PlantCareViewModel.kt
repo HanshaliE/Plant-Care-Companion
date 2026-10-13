@@ -42,6 +42,18 @@ class PlantCareViewModel(
     var careLogNote by mutableStateOf("")
         private set
 
+    var editNickname by mutableStateOf("")
+        private set
+
+    var editLocation by mutableStateOf("")
+        private set
+
+    var editWateringInterval by mutableStateOf("")
+        private set
+
+    var editLightRequirement by mutableStateOf("")
+        private set
+
     init {
         refreshPlants()
     }
@@ -135,4 +147,49 @@ class PlantCareViewModel(
                     filtered.sortedBy { it.nickname.lowercase() }
             }
         }
+
+    fun prepareEditPlant(plant: Plant) {
+        editNickname = plant.nickname
+        editLocation = plant.location ?: ""
+        editWateringInterval = plant.wateringIntervalDays.toString()
+        editLightRequirement = plant.lightRequirement ?: ""
+    }
+
+    fun updateEditNickname(value: String) {
+        editNickname = value
+    }
+
+    fun updateEditLocation(value: String) {
+        editLocation = value
+    }
+
+    fun updateEditWateringInterval(value: String) {
+        editWateringInterval = value
+    }
+
+    fun updateEditLightRequirement(value: String) {
+        editLightRequirement = value
+    }
+
+    fun saveEditedPlant(): Boolean {
+        val plant = selectedPlant ?: return false
+
+        val wateringDays = editWateringInterval.trim().toIntOrNull()
+
+        if (editNickname.isBlank() || wateringDays == null || wateringDays <= 0) {
+            return false
+        }
+
+        val updatedPlant = plant.copy(
+            nickname = editNickname.trim(),
+            location = editLocation.trim().ifBlank { null },
+            wateringIntervalDays = wateringDays,
+            lightRequirement = editLightRequirement.trim().ifBlank { null }
+        )
+
+        selectedPlant = updatedPlant
+        updatePlant(updatedPlant)
+
+        return true
+    }
 }

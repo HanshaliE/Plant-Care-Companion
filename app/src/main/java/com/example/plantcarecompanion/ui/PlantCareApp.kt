@@ -12,6 +12,7 @@ import com.example.plantcarecompanion.ui.addplant.addPlantGraph
 import kotlinx.serialization.Serializable
 import androidx.navigation.toRoute
 import com.example.plantcarecompanion.ui.screens.CareLogScreen
+import com.example.plantcarecompanion.ui.screens.EditPlantScreen
 import com.example.plantcarecompanion.ui.screens.MyPlantsScreen
 import com.example.plantcarecompanion.ui.screens.PlantDetailsScreen
 
@@ -23,6 +24,9 @@ data class PlantDetails(val plantId: Int)
 
 @Serializable
 data class CareLog(val plantId: Int)
+@Serializable
+data class EditPlant(val plantId: Int)
+
 @Composable
 fun PlantCareApp() {
     val navController = rememberNavController()
@@ -50,6 +54,9 @@ fun PlantCareApp() {
                 vm = plantCareViewModel,
                 onCareLogClick = { plantId ->
                     navController.navigate(CareLog(plantId))
+                },
+                onEditClick = { plantId ->
+                    navController.navigate(EditPlant(plantId))
                 }
             )
         }
@@ -60,6 +67,21 @@ fun PlantCareApp() {
             CareLogScreen(
                 plantId = route.plantId,
                 vm = plantCareViewModel
+            )
+        }
+
+        composable<EditPlant> { backStackEntry ->
+            val route: EditPlant = backStackEntry.toRoute()
+
+            EditPlantScreen(
+                plantId = route.plantId,
+                vm = plantCareViewModel,
+                onSaved = {
+                    navController.popBackStack()
+                },
+                onBack = {
+                    navController.popBackStack()
+                }
             )
         }
 

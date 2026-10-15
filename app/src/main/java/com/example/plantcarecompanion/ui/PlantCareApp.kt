@@ -1,20 +1,38 @@
 package com.example.plantcarecompanion.ui
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.example.plantcarecompanion.ProfileScreen
+import com.example.plantcarecompanion.RemindersScreen
+import com.example.plantcarecompanion.SettingsScreen
 import com.example.plantcarecompanion.di.AppContainer
 import com.example.plantcarecompanion.ui.addplant.AddPlantViewModel
 import com.example.plantcarecompanion.ui.addplant.SpeciesSearch
 import com.example.plantcarecompanion.ui.addplant.addPlantGraph
-import kotlinx.serialization.Serializable
-import androidx.navigation.toRoute
 import com.example.plantcarecompanion.ui.screens.CareLogScreen
 import com.example.plantcarecompanion.ui.screens.EditPlantScreen
 import com.example.plantcarecompanion.ui.screens.MyPlantsScreen
 import com.example.plantcarecompanion.ui.screens.PlantDetailsScreen
+import kotlinx.serialization.Serializable
 
 @Serializable
 data object PlantList
@@ -24,8 +42,18 @@ data class PlantDetails(val plantId: Int)
 
 @Serializable
 data class CareLog(val plantId: Int)
+
 @Serializable
 data class EditPlant(val plantId: Int)
+
+@Serializable
+data object RemindersRoute
+
+@Serializable
+data object SettingsRoute
+
+@Serializable
+data object ProfileRoute
 
 @Composable
 fun PlantCareApp() {
@@ -33,68 +61,137 @@ fun PlantCareApp() {
     val plantCareViewModel: PlantCareViewModel = viewModel(factory = AppContainer.plantCareViewModelFactory)
     val addPlantViewModel: AddPlantViewModel = viewModel(factory = AppContainer.addPlantViewModelFactory)
 
-    NavHost(navController = navController, startDestination = PlantList) {
-        composable<PlantList> {
-            MyPlantsScreen(
-                vm = plantCareViewModel,
-                onPlantClick = { plantId ->
-                    navController.navigate(PlantDetails(plantId))
-                },
-                onAddPlant = {
-                    navController.navigate(SpeciesSearch)
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val destination = backStackEntry?.destination
+
+    Scaffold(
+        bottomBar = {
+            val showBar = destination?.hasRoute(PlantList::class) == true ||
+                    destination?.hasRoute(RemindersRoute::class) == true ||
+                    destination?.hasRoute(ProfileRoute::class) == true ||
+                    destination?.hasRoute(SettingsRoute::class) == true
+
+            if (showBar) {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = destination?.hasRoute(PlantList::class) == true,
+                        onClick = {
+                            navController.navigate(PlantList) {
+                                popUpTo(PlantList) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Home, contentDescription = "Plants") },
+                        label = { Text("Plants") }
+                    )
+                    NavigationBarItem(
+                        selected = destination?.hasRoute(RemindersRoute::class) == true,
+                        onClick = {
+                            navController.navigate(RemindersRoute) {
+                                popUpTo(PlantList) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Notifications, contentDescription = "Reminders") },
+                        label = { Text("Reminders") }
+                    )
+                    NavigationBarItem(
+                        selected = destination?.hasRoute(ProfileRoute::class) == true,
+                        onClick = {
+                            navController.navigate(ProfileRoute) {
+                                popUpTo(PlantList) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                        label = { Text("Profile") }
+                    )
+                    NavigationBarItem(
+                        selected = destination?.hasRoute(SettingsRoute::class) == true,
+                        onClick = {
+                            navController.navigate(SettingsRoute) {
+                                popUpTo(PlantList) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
+                        label = { Text("Settings") }
+                    )
                 }
-            )
-        }
-
-        composable<PlantDetails> { backStackEntry ->
-            val route: PlantDetails = backStackEntry.toRoute()
-
-            PlantDetailsScreen(
-                plantId = route.plantId,
-                vm = plantCareViewModel,
-                onCareLogClick = { plantId ->
-                    navController.navigate(CareLog(plantId))
-                },
-                onEditClick = { plantId ->
-                    navController.navigate(EditPlant(plantId))
-                },
-                onDeleted = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        composable<CareLog> { backStackEntry ->
-            val route: CareLog = backStackEntry.toRoute()
-
-            CareLogScreen(
-                plantId = route.plantId,
-                vm = plantCareViewModel
-            )
-        }
-
-        composable<EditPlant> { backStackEntry ->
-            val route: EditPlant = backStackEntry.toRoute()
-
-            EditPlantScreen(
-                plantId = route.plantId,
-                vm = plantCareViewModel,
-                onSaved = {
-                    navController.popBackStack()
-                },
-                onBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-
-        addPlantGraph(
-            navController = navController,
-            viewModel = addPlantViewModel,
-            onPlantSaved = { plant ->
-                plantCareViewModel.addPlant(plant)               // Member A's ViewModel stores it in Room
-                navController.popBackStack(PlantList, inclusive = false)
             }
-        )
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = PlantList,
+            modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
+        ) {
+            composable<PlantList> {
+                MyPlantsScreen(
+                    vm = plantCareViewModel,
+                    onPlantClick = { plantId ->
+                        navController.navigate(PlantDetails(plantId))
+                    },
+                    onAddPlant = {
+                        navController.navigate(SpeciesSearch)
+                    }
+                )
+            }
+
+            composable<PlantDetails> { entry ->
+                val route: PlantDetails = entry.toRoute()
+
+                PlantDetailsScreen(
+                    plantId = route.plantId,
+                    vm = plantCareViewModel,
+                    onCareLogClick = { plantId ->
+                        navController.navigate(CareLog(plantId))
+                    },
+                    onEditClick = { plantId ->
+                        navController.navigate(EditPlant(plantId))
+                    },
+                    onDeleted = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable<CareLog> { entry ->
+                val route: CareLog = entry.toRoute()
+
+                CareLogScreen(
+                    plantId = route.plantId,
+                    vm = plantCareViewModel
+                )
+            }
+
+            composable<EditPlant> { entry ->
+                val route: EditPlant = entry.toRoute()
+
+                EditPlantScreen(
+                    plantId = route.plantId,
+                    vm = plantCareViewModel,
+                    onSaved = {
+                        navController.popBackStack()
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            composable<RemindersRoute> { RemindersScreen() }
+            composable<SettingsRoute> { SettingsScreen() }
+            composable<ProfileRoute> { ProfileScreen() }
+
+            addPlantGraph(
+                navController = navController,
+                viewModel = addPlantViewModel,
+                onPlantSaved = { plant ->
+                    plantCareViewModel.addPlant(plant)   // Member A's ViewModel stores it in Room
+                    navController.popBackStack(PlantList, inclusive = false)
+                }
+            )
+        }
     }
 }

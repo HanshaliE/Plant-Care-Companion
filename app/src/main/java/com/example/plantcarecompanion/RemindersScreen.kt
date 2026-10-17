@@ -60,7 +60,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.plantcarecompanion.data.local.entity.CustomReminder
 import com.example.plantcarecompanion.data.local.entity.Plant
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -202,29 +206,52 @@ fun RemindersScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             val visiblePlants = viewModel.visiblePlants
-            when {
-                viewModel.plants.isEmpty() -> EmptyStateCard()
-                visiblePlants.isEmpty() -> {
-                    Text(
-                        "All caught up for today 🎉",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 32.dp)
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(visiblePlants, key = { it.id }) { plant ->
-                            PlantRow(
-                                plant = plant,
-                                watered = plant.id in viewModel.wateredIds,
-                                dateLabel = viewModel.nextWateringLabel(plant),
-                                daysUntil = viewModel.daysUntilNextWatering(plant),
-                                onToggleWatered = { viewModel.toggleWatered(plant.id) }
+            val customReminders = viewModel.customReminders
+
+            if (viewModel.plants.isEmpty() && customReminders.isEmpty()) {
+                EmptyStateCard()
+            } else {
+                // One LazyColumn for plant rows and custom reminders together (Bug 3), so a
+                // custom reminder set before any plant exists still has somewhere to show up.
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    if (viewModel.plants.isNotEmpty()) {
+                        if (visiblePlants.isEmpty()) {
+                            item {
+                                Text(
+                                    "All caught up for today 🎉",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                                )
+                            }
+                        } else {
+                            items(visiblePlants, key = { "plant_${it.id}" }) { plant ->
+                                PlantRow(
+                                    plant = plant,
+                                    watered = viewModel.isWatered(plant),
+                                    dateLabel = viewModel.nextWateringLabel(plant),
+                                    daysUntil = viewModel.daysUntilNextWatering(plant),
+                                    onToggleWatered = { viewModel.toggleWatered(plant.id) }
+                                )
+                            }
+                        }
+                    }
+
+                    if (customReminders.isNotEmpty()) {
+                        item {
+                            Text(
+                                "Custom reminders",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                             )
+                        }
+                        items(customReminders, key = { "custom_${it.id}" }) { reminder ->
+                            CustomReminderRow(reminder)
                         }
                     }
                 }
@@ -477,6 +504,40 @@ private fun PlantRow(
                 )
             }
             StatusChip(label = chipLabel, containerColor = containerColor, contentColor = contentColor)
+        }
+    }
+}
+
+// Displays one persisted custom reminder (Bug 3) -- styled like PlantRow above so the list reads
+// as one consistent set of cards even though this row has no Plant behind it.
+@Composable
+private fun CustomReminderRow(reminder: CustomReminder) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(reminder.title, style = MaterialTheme.typography.titleMedium)
+                if (reminder.notes.isNotBlank()) {
+                    Text(
+                        reminder.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                SimpleDateFormat("EEE, d MMM · h:mm a", Locale.getDefault())
+                    .format(Date(reminder.triggerAtMillis)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

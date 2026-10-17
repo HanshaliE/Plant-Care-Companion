@@ -107,9 +107,14 @@ fun ProfileScreen() {
             initialName = viewModel.name,
             initialBio = viewModel.bio,
             photoPath = viewModel.photoPath,
+            photoError = viewModel.photoError,
+            onPrepareCameraShot = viewModel::prepareCameraShot,
+            onCameraResult = viewModel::onCameraResult,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
+            onDiscardPendingCameraShot = viewModel::discardPendingCameraShot,
             onDismiss = { showEditSheet = false },
-            onSave = { newName, newBio, pickedUri ->
-                viewModel.saveProfile(newName, newBio, pickedUri)
+            onSave = { newName, newBio, pickedUri, capturedPhotoPath ->
+                viewModel.saveProfile(newName, newBio, pickedUri, capturedPhotoPath)
                 showEditSheet = false
             }
         )

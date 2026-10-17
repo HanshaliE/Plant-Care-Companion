@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.plantcarecompanion.data.ProfileRepository
 import com.example.plantcarecompanion.data.SettingsRepository
 import com.example.plantcarecompanion.data.local.AppDatabase
+import com.example.plantcarecompanion.data.photo.PlantPhotoStorage
 
 //this factory is responsible for creating ProfileViewModel objects.
 class ProfileViewModelFactory(private val context: Context) : ViewModelProvider.Factory {  //ViewModelProvider.Factory is called when android wants to create a viewmodel
@@ -13,10 +14,11 @@ class ProfileViewModelFactory(private val context: Context) : ViewModelProvider.
         val db = AppDatabase.get(context) //app reuses an existing database instead od creating a new one everytime this factory is called
         @Suppress("UNCHECKED_CAST") //suppresses a compiler warnig about an unchecked type cast
         return ProfileViewModel(
-            profileRepository = ProfileRepository(context), //creates repository responsible for profile information
-            settingsRepository = SettingsRepository(context), //repository for app settings
-            plantDao = db.plantDao(), //dao for accessing plant records
-            careLogDao = db.careLogDao() //dao for accessing care-action records
-        ) as T //converts profileviewmodel to the requested generic type
+            profileRepository = ProfileRepository(context),
+            settingsRepository = SettingsRepository(context),
+            plantDao = db.plantDao(),
+            careLogDao = db.careLogDao(),
+            photos = PlantPhotoStorage(context)
+        ) as T
     }
 }

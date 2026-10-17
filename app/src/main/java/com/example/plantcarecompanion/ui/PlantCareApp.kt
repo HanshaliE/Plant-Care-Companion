@@ -152,6 +152,9 @@ fun PlantCareApp() {
                     },
                     onDeleted = {
                         navController.popBackStack()
+                    },
+                    onBack = {
+                        navController.popBackStack() // back to the Plants list
                     }
                 )
             }
@@ -161,7 +164,10 @@ fun PlantCareApp() {
 
                 CareLogScreen(
                     plantId = route.plantId,
-                    vm = plantCareViewModel
+                    vm = plantCareViewModel,
+                    onBack = {
+                        navController.popBackStack() // back to Plant Details
+                    }
                 )
             }
 
@@ -172,10 +178,10 @@ fun PlantCareApp() {
                     plantId = route.plantId,
                     vm = plantCareViewModel,
                     onSaved = {
-                        navController.popBackStack()
+                        navController.popBackStack() // back to Plant Details, changes saved
                     },
                     onBack = {
-                        navController.popBackStack()
+                        navController.popBackStack() // back to Plant Details, no changes (now also wired to the top bar's arrow)
                     }
                 )
             }

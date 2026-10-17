@@ -10,6 +10,7 @@ import com.example.plantcarecompanion.data.ProfileRepository
 import com.example.plantcarecompanion.data.SettingsRepository
 import com.example.plantcarecompanion.data.local.dao.CareLogDao
 import com.example.plantcarecompanion.data.local.dao.PlantDao
+import com.example.plantcarecompanion.data.photo.PlantPhotoStorage
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -21,7 +22,8 @@ class ProfileViewModel(
     private val profileRepository: ProfileRepository,  //receives objects it needs instead of creating them itself (dependency injection)
     private val settingsRepository: SettingsRepository,
     private val plantDao: PlantDao,
-    private val careLogDao: CareLogDao
+    private val careLogDao: CareLogDao,
+    private val photos: PlantPhotoStorage
 ) : ViewModel() {
 
     var name by mutableStateOf("Plant Parent")
@@ -47,7 +49,50 @@ class ProfileViewModel(
     var profileSaved by mutableStateOf(false)
         private set
 
-    //a property that returns the first letter of the user's name
+    var photoError by mutableStateOf<String?>(null)
+        private set
+
+    // Tracks the file created for an in-flight camera shot (between launching the camera app and
+    // getting its result back), so a cancelled/failed shot can clean up after itself.
+    private var pendingCameraFile: File? = null
+
+    /** Step 1 of taking a photo: returns the URI the camera app should write to. */
+    fun prepareCameraShot(): Uri {
+        pendingCameraFile?.delete() // in case a previous shot was abandoned without a result
+        val file = photos.newPhotoFile()
+        pendingCameraFile = file
+        photoError = null
+        return photos.uriFor(file)
+    }
+
+    /** Step 2: the camera app finished. Returns the captured file's path on success, or null (cancelled/failed). */
+    fun onCameraResult(success: Boolean): String? {
+        val file = pendingCameraFile ?: return null
+        pendingCameraFile = null
+        return if (success && file.length() > 0) {
+            // File already lives permanently under filesDir/plant_photos/ — no copy needed.
+            file.absolutePath
+        } else {
+            file.delete() // user backed out of the camera app, or it wrote nothing
+            null
+        }
+    }
+
+    fun onCameraUnavailable() {
+        pendingCameraFile?.delete()
+        pendingCameraFile = null
+        photoError = "No camera app available on this device."
+    }
+
+    /** Called when the edit sheet closes without saving: throws away any not-yet-saved capture. */
+    fun discardPendingCameraShot(capturedPhotoPath: String?) {
+        pendingCameraFile?.delete()
+        pendingCameraFile = null
+        // capturedPhotoPath is the sheet's local "pending photo" state — only persisted once
+        // saveProfile() stores it in ProfileRepository, so it's safe to delete here on cancel.
+        if (capturedPhotoPath != null) File(capturedPhotoPath).delete()
+    }
+
     val initial: String
         get() = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "P" //if no name, us P as thr fallback initial
 
@@ -86,13 +131,18 @@ class ProfileViewModel(
         }
     }
 
-    fun saveProfile(newName: String, newBio: String, pickedPhotoUri: Uri?) {
-        val trimmedName = newName.trim() //removes unnessasary whitespaces from the name
-        if (trimmedName.isBlank()) return // prevents empty or whitespaces being saved. return exists funtion immediately
+    fun saveProfile(newName: String, newBio: String, pickedGalleryUri: Uri?, capturedPhotoPath: String?) {
+        val trimmedName = newName.trim()
+        if (trimmedName.isBlank()) return
 
-        viewModelScope.launch { // starts a coroutine because saving the image and profile need file and database operations
-            val newPhotoPath = pickedPhotoUri?.let { profileRepository.copyImageToInternalStorage(it) } //if user selects a photo copy it to app's internal storage and obtain saved file path
-            profileRepository.saveProfile(trimmedName, newBio.trim(), newPhotoPath) //repository handles actual persistence. info saved
+        viewModelScope.launch {
+            val newPhotoPath = when {
+                // Already written to internal storage by the camera capture — no copy needed.
+                capturedPhotoPath != null -> capturedPhotoPath
+                pickedGalleryUri != null -> profileRepository.copyImageToInternalStorage(pickedGalleryUri)
+                else -> null
+            }
+            profileRepository.saveProfile(trimmedName, newBio.trim(), newPhotoPath)
             profileSaved = true
         }
     }

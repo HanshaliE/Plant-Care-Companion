@@ -112,10 +112,15 @@ fun ProfileScreen() { //this is the main screen that display the user's profile
             initialName = viewModel.name, //supplies the current profile values to populate the form
             initialBio = viewModel.bio,
             photoPath = viewModel.photoPath,
-            onDismiss = { showEditSheet = false }, //called when the user closes or cancels the sheet.
-            onSave = { newName, newBio, pickedUri -> //called when user saves
-                viewModel.saveProfile(newName, newBio, pickedUri) //passes the edited values to the ViewModel. The ViewModel handles saving the profile data.
-                showEditSheet = false //closes the bottom sheet after saving.
+            photoError = viewModel.photoError,
+            onPrepareCameraShot = viewModel::prepareCameraShot,
+            onCameraResult = viewModel::onCameraResult,
+            onCameraUnavailable = viewModel::onCameraUnavailable,
+            onDiscardPendingCameraShot = viewModel::discardPendingCameraShot,
+            onDismiss = { showEditSheet = false },
+            onSave = { newName, newBio, pickedUri, capturedPhotoPath ->
+                viewModel.saveProfile(newName, newBio, pickedUri, capturedPhotoPath)
+                showEditSheet = false
             }
         )
     }

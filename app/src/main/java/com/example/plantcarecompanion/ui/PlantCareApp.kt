@@ -66,15 +66,18 @@ fun PlantCareApp() {
 
     Scaffold(
         bottomBar = {
-            val showBar = destination?.hasRoute(PlantList::class) == true ||
-                    destination?.hasRoute(RemindersRoute::class) == true ||
-                    destination?.hasRoute(ProfileRoute::class) == true ||
-                    destination?.hasRoute(SettingsRoute::class) == true
+            // The bar now stays visible on every page. Sub-pages (plant details, care log, edit,
+            // search, add plant) count as part of the Plants tab, so Plants stays highlighted there.
+            val onReminders = destination?.hasRoute(RemindersRoute::class) == true
+            val onProfile = destination?.hasRoute(ProfileRoute::class) == true
+            val onSettings = destination?.hasRoute(SettingsRoute::class) == true
+            val onPlants = !onReminders && !onProfile && !onSettings
+            val showBar = true
 
             if (showBar) {
                 NavigationBar {
                     NavigationBarItem(
-                        selected = destination?.hasRoute(PlantList::class) == true,
+                        selected = onPlants,
                         onClick = {
                             navController.navigate(PlantList) {
                                 popUpTo(PlantList) { inclusive = false }
@@ -85,7 +88,7 @@ fun PlantCareApp() {
                         label = { Text("Plants") }
                     )
                     NavigationBarItem(
-                        selected = destination?.hasRoute(RemindersRoute::class) == true,
+                        selected = onReminders,
                         onClick = {
                             navController.navigate(RemindersRoute) {
                                 popUpTo(PlantList) { inclusive = false }
@@ -96,7 +99,7 @@ fun PlantCareApp() {
                         label = { Text("Reminders") }
                     )
                     NavigationBarItem(
-                        selected = destination?.hasRoute(ProfileRoute::class) == true,
+                        selected = onProfile,
                         onClick = {
                             navController.navigate(ProfileRoute) {
                                 popUpTo(PlantList) { inclusive = false }
@@ -107,7 +110,7 @@ fun PlantCareApp() {
                         label = { Text("Profile") }
                     )
                     NavigationBarItem(
-                        selected = destination?.hasRoute(SettingsRoute::class) == true,
+                        selected = onSettings,
                         onClick = {
                             navController.navigate(SettingsRoute) {
                                 popUpTo(PlantList) { inclusive = false }

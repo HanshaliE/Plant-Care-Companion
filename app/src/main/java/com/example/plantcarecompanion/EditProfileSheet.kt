@@ -1,5 +1,7 @@
 package com.example.plantcarecompanion
 
+import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,8 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,9 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,24 +56,67 @@ fun EditProfileSheet(
     initialName: String,
     initialBio: String,
     photoPath: String?,
+    photoError: String?,
+    onPrepareCameraShot: () -> Uri,
+    onCameraResult: (Boolean) -> String?,
+    onCameraUnavailable: () -> Unit,
+    onDiscardPendingCameraShot: (capturedPhotoPath: String?) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (name: String, bio: String, pickedPhotoUri: Uri?) -> Unit
+    onSave: (name: String, bio: String, pickedGalleryUri: Uri?, capturedPhotoPath: String?) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf(initialName) }
     var bio by rememberSaveable { mutableStateOf(initialBio) }
+    // At most one of these is non-null at a time: a gallery pick (content:// Uri we don't own,
+    // copied into internal storage only on Save) or a camera capture (a file we already own on
+    // disk the moment the camera app returns).
     var pickedUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var capturedPhotoPath by rememberSaveable { mutableStateOf<String?>(null) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
+    var saved by remember { mutableStateOf(false) } // guards the dispose-cleanup below
+
+    // If the sheet closes without the user tapping Save, throw away any photo already
+    // captured to disk so it doesn't linger as an orphaned file.
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!saved) onDiscardPendingCameraShot(capturedPhotoPath)
+        }
+    }
+
+    val context = LocalContext.current
+    val cameraAvailable = remember {
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+    }
+
+    // No CAMERA permission needed: the system camera app takes the photo and writes it to our file.
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        val path = onCameraResult(success)
+        if (path != null) {
+            capturedPhotoPath = path
+            pickedUri = null // a capture replaces any earlier gallery pick
+        }
+        // path == null means the user cancelled the camera app, or it failed — leave everything as is.
+    }
 
     val pickMedia = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
+            // Replacing a not-yet-saved camera capture with a gallery pick: drop the unused file.
+            if (capturedPhotoPath != null) {
+                onDiscardPendingCameraShot(capturedPhotoPath)
+                capturedPhotoPath = null
+            }
             pickedUri = uri
         }
     }
 
     val pickedBitmap = rememberBitmapFromUri(pickedUri)
+    val capturedBitmap = rememberProfileBitmap(capturedPhotoPath)
     val savedBitmap = rememberProfileBitmap(photoPath)
-    val previewBitmap = pickedBitmap ?: savedBitmap
+    // Prefer whatever was just picked/captured this session over the already-saved photo.
+    val previewBitmap = capturedBitmap ?: pickedBitmap ?: savedBitmap
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -94,7 +144,10 @@ fun EditProfileSheet(
                     fontWeight = FontWeight.Bold
                 )
                 TextButton(
-                    onClick = { onSave(name, bio, pickedUri) },
+                    onClick = {
+                        saved = true
+                        onSave(name, bio, pickedUri, capturedPhotoPath)
+                    },
                     enabled = name.isNotBlank()
                 ) {
                     Text("Save")
@@ -135,14 +188,10 @@ fun EditProfileSheet(
                     }
 
                     IconButton(
-                        onClick = {
-                            pickMedia.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
+                        onClick = { showPhotoSourceDialog = true },
                         modifier = Modifier
                             .size(48.dp)
-                            .semantics { contentDescription = "Choose profile photo" }
+                            .semantics { contentDescription = "Change profile photo" }
                     ) {
                         Box(
                             modifier = Modifier
@@ -155,6 +204,16 @@ fun EditProfileSheet(
                         }
                     }
                 }
+            }
+
+            if (photoError != null) {
+                Text(
+                    photoError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -178,5 +237,46 @@ fun EditProfileSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text("Update photo") },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            try {
+                                cameraLauncher.launch(onPrepareCameraShot())
+                            } catch (e: ActivityNotFoundException) {
+                                onCameraUnavailable()
+                            }
+                        },
+                        enabled = cameraAvailable,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Take photo")
+                    }
+                    TextButton(
+                        onClick = {
+                            showPhotoSourceDialog = false
+                            pickMedia.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Choose from gallery")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPhotoSourceDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

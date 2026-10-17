@@ -7,9 +7,9 @@ import com.example.plantcarecompanion.data.local.AppDatabase
 
 class ReminderViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val plantDao = AppDatabase.get(context).plantDao()
+        val db = AppDatabase.get(context)
         val scheduler = ReminderScheduler(context)
         @Suppress("UNCHECKED_CAST")
-        return ReminderViewModel(plantDao, scheduler) as T
+        return ReminderViewModel(db.plantDao(), db.careLogDao(), scheduler) as T
     }
 }

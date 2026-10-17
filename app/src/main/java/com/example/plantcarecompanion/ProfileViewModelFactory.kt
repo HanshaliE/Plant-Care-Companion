@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.plantcarecompanion.data.ProfileRepository
 import com.example.plantcarecompanion.data.SettingsRepository
 import com.example.plantcarecompanion.data.local.AppDatabase
+import com.example.plantcarecompanion.data.photo.PlantPhotoStorage
 
 class ProfileViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -15,7 +16,8 @@ class ProfileViewModelFactory(private val context: Context) : ViewModelProvider.
             profileRepository = ProfileRepository(context),
             settingsRepository = SettingsRepository(context),
             plantDao = db.plantDao(),
-            careLogDao = db.careLogDao()
+            careLogDao = db.careLogDao(),
+            photos = PlantPhotoStorage(context)
         ) as T
     }
 }

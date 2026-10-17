@@ -222,7 +222,7 @@ fun RemindersScreen() {
                                 plant = plant,
                                 watered = plant.id in viewModel.wateredIds,
                                 dateLabel = viewModel.nextWateringLabel(plant),
-                                daysUntil = daysUntilWatering(plant),
+                                daysUntil = viewModel.daysUntilNextWatering(plant),
                                 onToggleWatered = { viewModel.toggleWatered(plant.id) }
                             )
                         }
@@ -402,7 +402,7 @@ private fun PlantRow(
                     .size(48.dp)
                     .semantics {
                         contentDescription = if (watered) {
-                            "Mark ${plant.nickname} as not watered"
+                            "${plant.nickname} watered"
                         } else {
                             "Mark ${plant.nickname} as watered"
                         }

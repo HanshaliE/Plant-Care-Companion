@@ -2,7 +2,7 @@ package com.example.plantcarecompanion.ui.addplant
 
 import com.example.plantcarecompanion.domain.LookupError
 
-/** One place that turns a [LookupError] into words for the user. `when` is exhaustive (sealed). */
+// Turning LookupError into words for the user to understand
 fun LookupError.userMessage(): String = when (this) {
     LookupError.Offline -> "You appear to be offline."
     LookupError.Timeout -> "The plant database took too long to respond."

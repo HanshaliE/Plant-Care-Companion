@@ -34,35 +34,30 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.plantcarecompanion.data.local.entity.Plant
 
-/**
- * TEMPORARY home screen so the Add Plant flow can be run and tested end to end.
- * Member A: replace this with the real plant list; all you need to keep is a way to call
- * `navController.navigate(SpeciesSearch)` (see PlantCareApp.kt).
- */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // allows the use of TopAppBar which is marked as experimental
 @Composable
 fun PlantListPlaceholder(
-    plants: List<Plant>,
-    onAddPlant: () -> Unit
+    plants: List<Plant>, //list of plants that should be displayed on the screen
+    onAddPlant: () -> Unit //a callback that runs when the user taps the add plant button, the parent screen decides what action to perform
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("My plants") }) },
+        topBar = { TopAppBar(title = { Text("My plants") }) }, //app bar displayed on top of the screen
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAddPlant,
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add plant") }
+            ExtendedFloatingActionButton( //floating action button used to start adding a plant
+                onClick = onAddPlant, //calls the callback supplied by the parent screen
+                icon = { Icon(Icons.Default.Add, contentDescription = null) }, //display a plus icon inside the button
+                text = { Text("Add plant") } //text displayed beside the icon
             )
         }
     ) { padding ->
-        if (plants.isEmpty()) {
+        if (plants.isEmpty()) { //check whether the list contains any plants
             Box(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize(),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center //places the message in the center of the box
             ) {
-                Text("No plants yet — tap “Add plant”.")
+                Text("No plants yet — tap “Add plant”.") //message displayed when user has no saved plants
             }
         } else {
             LazyColumn(
@@ -76,20 +71,21 @@ fun PlantListPlaceholder(
     }
 }
 
+// a card to display an individual plant
 @Composable
 private fun PlantCard(plant: Plant) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Card(modifier = Modifier.fillMaxWidth()) { //card give the plant's information a contained visual surface and makes the card stretch across available width
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) { //places the image and plant information side by side
             Box(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.secondaryContainer)
             ) {
-                if (plant.imageUri != null) {
+                if (plant.imageUri != null) { //only try to load an image if the plant has a URI
                     AsyncImage(
-                        model = plant.imageUri,
-                        contentDescription = "Photo of ${plant.nickname}",
+                        model = plant.imageUri, // the URI identified the plant's saved image
+                        contentDescription = "Photo of ${plant.nickname}", // accessibility description for the image
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -98,12 +94,12 @@ private fun PlantCard(plant: Plant) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(plant.nickname, style = MaterialTheme.typography.titleMedium)
-                Text(
+                Text( //builds a line containing the species name and location seperated by a middle dot
                     listOfNotNull(plant.speciesName, plant.location).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    "Water every ${plant.wateringIntervalDays} days",
+                    "Water every ${plant.wateringIntervalDays} days", //displayed how often this plant should be watered. number comes from the plant data object
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -51,19 +51,15 @@ import com.example.plantcarecompanion.domain.Species
 import com.example.plantcarecompanion.domain.SpeciesSource
 import com.example.plantcarecompanion.domain.canRetry
 
-/**
- * Stateless: shows whatever [state] says and reports taps upward (state hoisting, Lecture 3).
- * It never calls the network or decides anything.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpeciesSearchScreen(
-    query: String,
-    state: SearchUiState,
-    suggestions: List<Species>,
-    onQueryChange: (String) -> Unit,
-    onSearch: () -> Unit,
-    onRetry: () -> Unit,
+    query: String, // text entered to the search field
+    state: SearchUiState, //state fo the search
+    suggestions: List<Species>, //locally available species
+    onQueryChange: (String) -> Unit, //callback invoked whenever the user changes the search text
+    onSearch: () -> Unit, //callback that starts a seach immediatly
+    onRetry: () -> Unit, //callback that repeats a search after a failure
     onSpeciesClick: (Species) -> Unit,
     onManualEntry: () -> Unit,
     onBack: () -> Unit
@@ -190,7 +186,6 @@ private fun SpeciesList(
     }
 }
 
-/** Shown above fallback results: why live search didn't work + what the user can do. */
 @Composable
 private fun NoticeBanner(error: LookupError, onRetry: () -> Unit) {
     Card(
@@ -224,7 +219,7 @@ private fun SpeciesRow(species: Species, onClick: () -> Unit) {
             if (species.imageUrl != null) {
                 AsyncImage(
                     model = species.imageUrl,
-                    contentDescription = null,                  // decorative: the name is right beside it
+                    contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(56.dp)
@@ -285,7 +280,6 @@ private fun SourceTag(text: String) {
     )
 }
 
-/** Slot-based (Lecture 3): the caller passes whatever should sit under the text — spinner or buttons. */
 @Composable
 private fun CenteredMessage(
     title: String,

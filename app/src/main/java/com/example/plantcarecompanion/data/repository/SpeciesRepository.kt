@@ -114,7 +114,7 @@ class SpeciesRepository(
             val dto = response.body()?.toSpecies() ?: return@safely Live.Failed(LookupError.BadResponse)
             Live.Ok(dto)
         } else {
-            Live.Failed(errorFor(response.code(), response.headers()["Retry-After"]))
+            Live.Failed(errorFor(response.code(), response.headers()["Retry-After"], forDetails = true))
         }
     }
 
@@ -132,7 +132,8 @@ class SpeciesRepository(
         Live.Failed(LookupError.BadResponse)
     }
 
-    private fun errorFor(code: Int, retryAfterHeader: String?): LookupError = when (code) {
+    private fun errorFor(code: Int, retryAfterHeader: String?, forDetails: Boolean = false): LookupError = when (code) {
+        404 -> if (forDetails) LookupError.NotFound else LookupError.Server(code)
         429 -> {
             guard.recordRateLimited(retryAfterHeader?.trim()?.toLongOrNull())
             val gate = guard.check()

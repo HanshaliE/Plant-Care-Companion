@@ -50,6 +50,21 @@ private class FakeApi(private val script: MutableList<() -> Response<SpeciesList
     override suspend fun getSpeciesDetails(id: Int): Response<SpeciesDto> = throw IOException("not used")
 }
 
+/** Search is never used; the details endpoint answers 404 (plant has no details page). */
+private class DetailsNotFoundApi : PerenualApi {
+    override suspend fun searchSpecies(query: String, page: Int): Response<SpeciesListResponse> =
+        throw IOException("not used")
+    override suspend fun getSpeciesDetails(id: Int): Response<SpeciesDto> {
+        val raw = okhttp3.Response.Builder()
+            .request(okhttp3.Request.Builder().url("https://perenual.com/").build())
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .code(404).message("Not Found")
+            .body("{}".toResponseBody("application/json".toMediaType()))
+            .build()
+        return Response.error(raw.body!!, raw)
+    }
+}
+
 private fun ok(vararg names: String) = {
     Response.success(
         SpeciesListResponse(
@@ -201,5 +216,23 @@ class SpeciesRepositoryTest {
         val outcome = repo(FakeApi(mutableListOf())).search("zzzzqq")
         assertTrue(outcome.species.isEmpty())
         assertEquals(LookupError.Offline, outcome.error)
+    }
+
+    @Test
+    fun missingDetailsPageIsNotReportedAsAServerError() = runTest {
+        val species = com.example.plantcarecompanion.domain.Species(id = 8759, commonName = "Tomato")
+        val repo = SpeciesRepository(
+            api = DetailsNotFoundApi(),
+            speciesDao = dao,
+            guard = RateLimitGuard(RepoFakeStore(), clock = { now }, dailyLimit = 100),
+            connectivity = ConnectivityChecker { true },
+            hasApiKey = true,
+            clock = { now }
+        )
+
+        val outcome = repo.enrichCareInfo(species)
+
+        assertEquals(LookupError.NotFound, outcome.error)      // friendly notice, not "error 404"
+        assertEquals("Tomato", outcome.species.commonName)     // the plant the user picked is kept
     }
 }

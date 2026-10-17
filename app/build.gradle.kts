@@ -7,10 +7,19 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Reads local.properties (git-ignored, one per developer). It must contain a line like:
+//   PERENUAL_API_KEY=your_key_here
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+
+// Tidy the key before it is baked into BuildConfig: stray spaces or surrounding quotes
+// (easy to paste by accident) would otherwise make the key invalid or look "missing".
+val perenualApiKey: String = localProps.getProperty("PERENUAL_API_KEY", "")
+    .trim()
+    .removeSurrounding("\"")
+    .trim()
 
 android {
     namespace = "com.example.plantcarecompanion"
@@ -29,7 +38,7 @@ android {
         buildConfigField(
             "String",
             "PERENUAL_API_KEY",
-            "\"${localProps.getProperty("PERENUAL_API_KEY", "")}\""
+            "\"$perenualApiKey\""
         )
     }
 

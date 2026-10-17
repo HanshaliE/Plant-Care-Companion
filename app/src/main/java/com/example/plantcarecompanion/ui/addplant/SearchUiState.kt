@@ -3,34 +3,23 @@ package com.example.plantcarecompanion.ui.addplant
 import com.example.plantcarecompanion.domain.LookupError
 import com.example.plantcarecompanion.domain.Species
 
-/**
- * Everything the search screen can be showing — one value instead of a pile of Booleans, so
- * "loading AND error" is impossible (Lecture 2: sealed classes; Lecture 5: ScreenState).
- */
+//a sealed interface defining all possible states of the species search UI
+//sealed - restricts which classes or objects can implement this interface
 sealed interface SearchUiState {
-    /** Nothing typed yet (or fewer than 2 characters): show the built-in common plants. */
-    data object Idle : SearchUiState
+    data object Idle : SearchUiState // the search is idle - no search is currently being performed
+    data object Loading : SearchUiState //search is currently in progress. the UI uses this state to display a loading indicator
 
-    data object Loading : SearchUiState
+    data class Results(val species: List<Species>, val notice: LookupError? = null) : SearchUiState //a search completed and returned one or more matching species
 
-    /**
-     * [notice] != null means the live lookup failed and these results are the offline fallback
-     * (saved lookups + built-in list); the screen shows a banner with the reason and a Retry.
-     */
-    data class Results(val species: List<Species>, val notice: LookupError? = null) : SearchUiState
+    data class Empty(val query: String) : SearchUiState // search completed, but no matching species were found. stores query that produces no results
 
-    /** The lookup worked but nothing matched. */
-    data class Empty(val query: String) : SearchUiState
-
-    /** The lookup failed and there was no fallback result for this query either. */
     data class Error(val error: LookupError) : SearchUiState
 }
 
-/** State of fetching watering/light info for the chosen species on the Add Plant screen. */
+//for state of plant care information
 sealed interface CareInfoState {
-    data object Idle : CareInfoState
-    data object Loading : CareInfoState
-    data object Loaded : CareInfoState
-    /** Couldn't get it — the user can still type watering/light by hand. */
-    data class Unavailable(val error: LookupError?) : CareInfoState
+    data object Idle : CareInfoState //care information has not started loading, or the state has been reset
+    data object Loading : CareInfoState //care information is currently being retrieved
+    data object Loaded : CareInfoState // successfully retrieved care info
+    data class Unavailable(val error: LookupError?) : CareInfoState //cannot be obtained fully, stores the reason if knowsn can be null if no specific error available.
 }

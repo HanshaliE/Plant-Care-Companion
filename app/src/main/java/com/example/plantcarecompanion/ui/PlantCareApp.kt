@@ -194,7 +194,7 @@ fun PlantCareApp() {
                 navController = navController,
                 viewModel = addPlantViewModel,
                 onPlantSaved = { plant ->
-                    plantCareViewModel.addPlant(plant)   // Member A's ViewModel stores it in Room
+                    plantCareViewModel.addPlant(plant)
                     navController.popBackStack(PlantList, inclusive = false)
                 }
             )

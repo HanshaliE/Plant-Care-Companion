@@ -21,38 +21,33 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-/**
- * State + decisions for the whole "add a plant" flow: Species Search -> Add Plant.
- * One instance is shared by both screens (created above the NavHost, Lecture 5), so the typed query,
- * the results and the half-filled form all survive rotation and moving between the two screens.
- *
- * It never touches Retrofit or Room directly — only [SpeciesRepository] — and it never saves the plant
- * itself: [buildPlant] hands back a validated Plant and the caller (hoisted callback) stores it.
- */
+//viewmodel manages add plant screens data and business logic. It survives configuration changes such as screen rotations
 class AddPlantViewModel(
-    private val repository: SpeciesRepository,
-    private val photos: PlantPhotoStorage
+    private val repository: SpeciesRepository,  // repo provides plant species data and search funtionality
+    private val photos: PlantPhotoStorage //photo storage manages the plants image files
 ) : ViewModel() {
 
-    // ---------- search ----------
 
-    var query by mutableStateOf("")
+
+    var query by mutableStateOf("") //stores the text currently enteredin the species search field
         private set
 
-    var searchState by mutableStateOf<SearchUiState>(SearchUiState.Idle)
+    var searchState by mutableStateOf<SearchUiState>(SearchUiState.Idle) //stores the state of the current search
         private set
 
-    /** Shown while the search box is empty — available with zero network. */
+    //provides locally available plant species for suggestions
     val suggestions: List<Species> = LocalPlantCatalog.species
 
+    //stores the currently running search coroutine, it allows an earlier search to be cancelled when a query is entered
     private var searchJob: Job? = null
 
+    //called whenever user types or changes the search query
     fun onQueryChange(newQuery: String) {
         query = newQuery
-        searchJob?.cancel()
-        val q = repository.normalize(newQuery)
-        if (q.length < SpeciesRepository.MIN_QUERY_LENGTH) {
-            searchState = SearchUiState.Idle
+        searchJob?.cancel() // cancel any pending or currently running search job
+        val q = repository.normalize(newQuery) //normalize the current search field valie
+        if (q.length < SpeciesRepository.MIN_QUERY_LENGTH) { //check whether the query meets the minimum length requirmenet
+            searchState = SearchUiState.Idle // no valid search can be performed so reset the search state
             return
         }
         // Debounce: wait for a pause in typing so one word costs one request, not one per letter.
@@ -61,8 +56,7 @@ class AddPlantViewModel(
             runSearch(q)
         }
     }
-
-    /** Keyboard "Search" key and the Retry button: go now, no debounce. */
+    //starts immedietly without waiting for the debounce delay
     fun searchNow() {
         searchJob?.cancel()
         val q = repository.normalize(query)
@@ -70,20 +64,19 @@ class AddPlantViewModel(
             searchState = SearchUiState.Idle
             return
         }
-        searchJob = viewModelScope.launch { runSearch(q) }
+        searchJob = viewModelScope.launch { runSearch(q) } //launch a coroutine to perform the search asynchronously
     }
 
-    private suspend fun runSearch(normalizedQuery: String) {
-        searchState = SearchUiState.Loading
+    //performs actual species search
+    private suspend fun runSearch(normalizedQuery: String) { //suspend allows this function to perform suspending operations such as network requests without blocking the main thread
+        searchState = SearchUiState.Loading //tell the UI that a search is currently in progress
         val outcome = repository.search(normalizedQuery)
-        searchState = when {
-            outcome.species.isEmpty() && outcome.error != null -> SearchUiState.Error(outcome.error)
-            outcome.species.isEmpty() -> SearchUiState.Empty(normalizedQuery)
-            else -> SearchUiState.Results(outcome.species, outcome.error)
+        searchState = when { //decide which ui state should be displayed based on the search result
+            outcome.species.isEmpty() && outcome.error != null -> SearchUiState.Error(outcome.error) // no species founf - error
+            outcome.species.isEmpty() -> SearchUiState.Empty(normalizedQuery) //no species were found but no error
+            else -> SearchUiState.Results(outcome.species, outcome.error) //show species found, and error
         }
     }
-
-    // ---------- the form ----------
 
     var draft by mutableStateOf(PlantDraft())
         private set
@@ -95,72 +88,84 @@ class AddPlantViewModel(
         private set
 
     // If the user typed their own value, a late API answer must not overwrite it.
-    private var intervalEdited = false
+    private var intervalEdited = false //checks if user has manually edited watering interval. if true, fetched care information should not overwrite user's value
     private var lightEdited = false
-    private var careJob: Job? = null
+    private var careJob: Job? = null //holds the coroutine that loads and enriches plant care information. It can be cancelled if another species is selected.
 
-    /** Called by the Add Plant destination with the id from its route. 0 = manual entry. */
+    //called when add plant screen recieves a species id from navigation
     fun loadSpecies(speciesId: Int) {
-        if (draft.speciesId == speciesId) return          // already set up (rotation / came back)
-        careJob?.cancel()
-        intervalEdited = false
+        if (draft.speciesId == speciesId) return //if this species is already loaded, do nothing
+        careJob?.cancel() //cancel any care information request from the previous species
+        intervalEdited = false //reset the manual edit flags for the newly selected species
         lightEdited = false
-        errors = DraftErrors()
+        errors = DraftErrors() //clear validation errors when loading a new species
+
+        //check whether user selected manual entry
 
         if (speciesId == MANUAL_ENTRY) {
-            draft = draft.copy(
+            draft = draft.copy( //copy creates a new plantdraft while preserving unspecified fields.
                 speciesId = MANUAL_ENTRY, speciesName = "", nickname = "",
-                wateringIntervalDays = "", lightRequirement = ""
+                wateringIntervalDays = "", lightRequirement = "" //reset the species related fields so the user can enter their own data
             )
-            careInfo = CareInfoState.Idle
+            careInfo = CareInfoState.Idle //no external care info needed for manual entry
             return
         }
 
+        //setup a clean draft for the selected species
         draft = draft.copy(
             speciesId = speciesId, speciesName = "", nickname = "",
             wateringIntervalDays = "", lightRequirement = ""
         )
-        careJob = viewModelScope.launch {
-            // 1) instant, local: name + whatever care info we already have
+        careJob = viewModelScope.launch { //load the selected species and its care information asynchronously
+
+            //retrieve local species information first.
             val local = repository.getSpecies(speciesId)
+
+            //if the species cannot be found locally, stop loading
             if (local == null) {
-                careInfo = CareInfoState.Unavailable(null)
+                careInfo = CareInfoState.Unavailable(null) //inform the UI that the care information is unavailable
                 return@launch
             }
-            applySpecies(local, firstTime = true)
+            applySpecies(local, firstTime = true) //apply locally  available information immediately.
+            //firstTime = true allows the species name and initial nickname to be populated
 
-            // 2) only if watering info is missing/stale: one network call, failure is non-fatal
+            // Attempt to retrieve additional or updated care information.
             careInfo = CareInfoState.Loading
-            val outcome = repository.enrichCareInfo(local)
-            applySpecies(outcome.species, firstTime = false)
-            careInfo = if (outcome.species.wateringIntervalDays != null) {
-                CareInfoState.Loaded
+            val outcome = repository.enrichCareInfo(local) //ask repository to enrich the species with care information
+            applySpecies(outcome.species, firstTime = false) //apply the returned data while respecting manually edited fields. firstime = false prevents the initial species name/nickname setup from being repeated
+            careInfo = if (outcome.species.wateringIntervalDays != null) { // determine the final care information state
+                CareInfoState.Loaded //watering information is available
             } else {
-                CareInfoState.Unavailable(outcome.error)
+                CareInfoState.Unavailable(outcome.error) // watering information is still missing. pass the error
             }
         }
     }
 
+    //copies relevant information from the species object into a form draft
     private fun applySpecies(species: Species, firstTime: Boolean) {
-        var d = draft
+        var d = draft //starts with the current draft so existing user entered data is preserved
         if (firstTime) {
             d = d.copy(
-                speciesName = species.commonName,
-                nickname = if (d.nickname.isBlank()) species.commonName else d.nickname
+                speciesName = species.commonName, //set plant's name from the catalogue
+                nickname = if (d.nickname.isBlank()) species.commonName else d.nickname //if field is blank, use common name. else use name user entered
             )
         }
+        //fill watering interval only if the user has not edited it and the species provides a watering interval
         if (!intervalEdited && species.wateringIntervalDays != null) {
-            d = d.copy(wateringIntervalDays = species.wateringIntervalDays.toString())
+            d = d.copy(wateringIntervalDays = species.wateringIntervalDays.toString()) //convert the numeric interval to a String for the form's text field
         }
+
+        //fill the light requirement only if user has not edited it and species provides a non-empty light requirement
         if (!lightEdited && !species.lightRequirement.isNullOrBlank()) {
             d = d.copy(lightRequirement = species.lightRequirement)
         }
-        draft = d
+        draft = d //publish the updated draft so that compose can refresh the UI
     }
 
+    //called whenever the user changes the plant's nickname
     fun onNicknameChange(value: String) {
-        draft = draft.copy(nickname = value)
-        if (errors.nickname) errors = errors.copy(nickname = false)
+        draft = draft.copy(nickname = value) //update only the nickname field, preserving the other draft values
+        if (errors.nickname) errors = errors.copy(nickname = false) // if nickname previouslt has a validation error, clear that error when the user edits the field
     }
 
     fun onSpeciesNameChange(value: String) {
@@ -169,12 +174,12 @@ class AddPlantViewModel(
     }
 
     fun onLocationChange(value: String) {
-        draft = draft.copy(location = value)
+        draft = draft.copy(location = value) //update location while preserving the rest of the form
     }
 
     fun onIntervalChange(value: String) {
-        intervalEdited = true
-        draft = draft.copy(wateringIntervalDays = value.filter(Char::isDigit).take(3))
+        intervalEdited = true //mark field as manually edited. later care-information must not overwrite it
+        draft = draft.copy(wateringIntervalDays = value.filter(Char::isDigit).take(3)) //keep only digit characters and limit input to three digits
         if (errors.interval) errors = errors.copy(interval = false)
     }
 
@@ -183,83 +188,86 @@ class AddPlantViewModel(
         draft = draft.copy(lightRequirement = value)
     }
 
-    // ---------- photo (camera / gallery) ----------
+    //CAMERA, GALLERY
 
-    var photoBusy by mutableStateOf(false)
+    var photoBusy by mutableStateOf(false) //whether a importing image is in progress
         private set
 
-    var photoError by mutableStateOf<String?>(null)
+    var photoError by mutableStateOf<String?>(null) //stores optional error message related to photo operations
         private set
 
-    private var pendingCameraFile: File? = null
+    private var pendingCameraFile: File? = null //temporarily stores the file created for a camera photo. pending until camera reports its result
 
-    /** Step 1 of taking a photo: returns the URI the camera app should write to. */
-    fun prepareCameraShot(): Uri {
-        pendingCameraFile?.delete()
-        val file = photos.newPhotoFile()
-        pendingCameraFile = file
+    //prepare a file before launching the camera
+    fun prepareCameraShot(): Uri { //returns URI that the camera should write the photo to
+        pendingCameraFile?.delete() //deleted older unfinished camera files if one exists
+        val file = photos.newPhotoFile() //create a new file in the application's photo storage
+        pendingCameraFile = file //remember the file until the camera result is recieved
         photoError = null
-        return photos.uriFor(file)
+        return photos.uriFor(file) //convert the file into a URI that can be supplied to the camera
     }
 
-    /** Step 2: the camera app finished (success = false if the user cancelled). */
-    fun onCameraResult(success: Boolean) {
-        val file = pendingCameraFile ?: return
-        pendingCameraFile = null
-        if (success && file.length() > 0) setPhoto(file) else file.delete()
+    //handle the result returned by the camera
+    fun onCameraResult(success: Boolean) { //success is true when camera reports success
+        val file = pendingCameraFile ?: return // retrieve the pending camera file. If no file exists there is nothing to process
+        pendingCameraFile = null // clear  the pending reference because this camera operation has finished
+        if (success && file.length() > 0) setPhoto(file) else file.delete() //accept the photo only if the camera succeded and the file is non-empty. save the photo's URI in the plant draft
+        //else delete the incomplete or cancelled camera file
     }
 
-    fun onCameraUnavailable() {
-        pendingCameraFile?.delete()
-        pendingCameraFile = null
-        photoError = "No camera app available on this device."
+    fun onCameraUnavailable() { // called when the application cannot launch a camera app
+        pendingCameraFile?.delete() //remove any unfinished camera file
+        pendingCameraFile = null //clear the pending file reference
+        photoError = "No camera app available on this device." //set an error message for the UI to display
     }
 
-    fun onGalleryPicked(uri: Uri?) {
-        if (uri == null) return                              // user backed out of the picker
-        viewModelScope.launch {
-            photoBusy = true
-            photoError = null
-            val file = photos.importFromGallery(uri)
-            photoBusy = false
-            if (file != null) setPhoto(file) else photoError = "Couldn't read that image."
+    fun onGalleryPicked(uri: Uri?) { //called when the user selects an image from the gallery. URI may be null if the user cancels the image picker
+        if (uri == null) return  // do nothing when the user backs out of the gallery
+        viewModelScope.launch { //import the selected image asynchronously
+            photoBusy = true //tell UI that photo import is in progress
+            photoError = null //clear any previous photo error
+            val file = photos.importFromGallery(uri) //copy import the selected image into the app's photo storage
+            photoBusy = false //mark import operation as finished
+            if (file != null) setPhoto(file) else photoError = "Couldn't read that image." //if import is succedded, assign the photo to the draft. otherwise, show an error message
         }
     }
 
+    //called when the user removes the selected plant photo
     fun removePhoto() {
-        photos.deleteByUriString(draft.photoUri)
+        //delete the current photo file using the URI stored in the draft
+        photos.deleteByUriString(draft.photoUri) //remove the photo reference from the draft
         draft = draft.copy(photoUri = null)
     }
 
+    //assign new photo file to the current plant draft
     private fun setPhoto(file: File) {
-        photos.deleteByUriString(draft.photoUri)             // replacing: don't leave the old file behind
-        draft = draft.copy(photoUri = photos.uriString(file))
+        //delete the previous photo so replacing the image does not leave an unused file behind
+        photos.deleteByUriString(draft.photoUri)
+        draft = draft.copy(photoUri = photos.uriString(file)) //convert the new file into a URI string and store it in the drat. TheUI can use this URI to display the selected image
     }
 
-    // ---------- finishing ----------
-
-    /** Validates; returns the Plant to store, or null (and sets [errors]) if the form isn't valid yet. */
+    //validates current form and attempts to create plant entity.
     fun buildPlant(): Plant? {
         errors = draft.validate()
-        return draft.toPlantOrNull()
+        return draft.toPlantOrNull() //return draft if successful, null if not
     }
 
-    private var savedPendingClear = false
+    private var savedPendingClear = false //checks whether a successful save was done to the form and cleared after the screen leaves
 
-    /** The caller stored the plant. The form is emptied once the screen has actually left. */
+    //called by the screen after the plant has been successfully saved.
     fun onPlantSaved() {
-        savedPendingClear = true
+        savedPendingClear = true // do not clear form immediatly. mark for clearing when the add plant screen is disposed
     }
 
-    /** Called when the Add Plant screen leaves composition (not on rotation — the flag is only set after a save). */
+    //form cleared when save is sucessful
     fun onAddPlantScreenDisposed() {
-        if (savedPendingClear) {
-            savedPendingClear = false
-            clearDraft()
+        if (savedPendingClear) { //check whether successful save is waiting to be completed
+            savedPendingClear = false //reset the flag so the draft is not cleared repeatedly
+            clearDraft() //rest of the form and its temporarys state
         }
     }
 
-    /** After a successful save: empty the form but KEEP the photo file (the plant now owns it). */
+    //reset form after successful save
     fun clearDraft() {
         careJob?.cancel()
         draft = PlantDraft()
@@ -270,7 +278,7 @@ class AddPlantViewModel(
         photoError = null
     }
 
-    /** User backed out without saving: throw away the draft and any photo taken for it. */
+    //called when user leaves without saving the plant
     fun discardDraft() {
         photos.deleteByUriString(draft.photoUri)
         pendingCameraFile?.delete()
@@ -278,7 +286,7 @@ class AddPlantViewModel(
         clearDraft()
     }
 
-    private companion object {
-        const val DEBOUNCE_MILLIS = 500L
+    private companion object { //stores constants and helper values associated with this viewmodel
+        const val DEBOUNCE_MILLIS = 500L //the search waits  milliseconds after typing stops before making a search request.
     }
 }

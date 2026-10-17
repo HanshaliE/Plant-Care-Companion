@@ -45,7 +45,6 @@ class ProfileRepository(private val context: Context) {
         }
     }
 
-    /** Pass `photoPath = null` to leave the previously saved photo untouched. */
     suspend fun saveProfile(name: String, bio: String, photoPath: String?) {
         context.profileDataStore.edit { prefs ->
             prefs[nameKey] = name

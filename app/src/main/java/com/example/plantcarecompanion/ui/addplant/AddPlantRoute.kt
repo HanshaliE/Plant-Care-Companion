@@ -14,10 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.plantcarecompanion.data.local.entity.Plant
 import com.example.plantcarecompanion.domain.MANUAL_ENTRY
 
-/**
- * The stateful wrapper around [AddPlantScreen] — the "owner" in state-hoisting terms.
- * It connects the screen to the ViewModel and to the two device features (camera, photo picker).
- */
+//connects add plant screen ui to viewmodel and handles navigation, loading species details, selecting plant photos
 @Composable
 fun AddPlantRoute(
     speciesId: Int,
@@ -25,61 +22,61 @@ fun AddPlantRoute(
     onSave: (Plant) -> Unit,
     onBack: () -> Unit
 ) {
+    //loads selected species details whenever speciesID changes
     LaunchedEffect(speciesId) { viewModel.loadSpecies(speciesId) }
 
-    // After a successful save the form is emptied once this screen has actually left the screen.
-    DisposableEffect(Unit) {
-        onDispose { viewModel.onAddPlantScreenDisposed() }
+    //registers cleanup logic when this screen leaves composition.
+    DisposableEffect(Unit) { //unit is a contant key so this effect is not restarted just because unrealted state changes
+        onDispose { viewModel.onAddPlantScreenDisposed() } //when screen leaves composition, viewmodel can cleean up temporary resources or state associated with the screen.
     }
 
-    // System back = cancel this add (discard draft + any photo taken for it).
+    //intercepts the device's back instead of relying on default behaviour
     BackHandler(onBack = onBack)
 
     val context = LocalContext.current
-    val cameraAvailable = remember {
+    val cameraAvailable = remember { //checks if device has any camera hardware and caches the result to remember
         context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
     }
 
-    // No CAMERA permission needed: the system camera app takes the photo and writes it to our file.
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
+    val cameraLauncher = rememberLauncherForActivityResult( //creates a laucher for selecting an image using device camera
+        ActivityResultContracts.TakePicture() //takepicture() returns a boolean indicating whether pciture taking was successful or not and saved to the URI supplied when lauching it
     ) { success -> viewModel.onCameraResult(success) }
 
-    // Photo picker: no storage permission needed either.
-    val galleryLauncher = rememberLauncherForActivityResult(
+    val galleryLauncher = rememberLauncherForActivityResult( // creates a launcheer for selecting an image using android's photo pciker.
         ActivityResultContracts.PickVisualMedia()
     ) { uri -> viewModel.onGalleryPicked(uri) }
 
+    //displays athe add plan screen and connects ui elements to the state and funtions provided by the viewmodel
     AddPlantScreen(
-        draft = viewModel.draft,
-        errors = viewModel.errors,
-        careInfo = viewModel.careInfo,
-        isManual = speciesId == MANUAL_ENTRY,
-        photoBusy = viewModel.photoBusy,
-        photoError = viewModel.photoError,
-        cameraAvailable = cameraAvailable,
+        draft = viewModel.draft, //current plant form data
+        errors = viewModel.errors, // validation errors that should be shown to user
+        careInfo = viewModel.careInfo, //care information for the selected plant species
+        isManual = speciesId == MANUAL_ENTRY, //determines whetehr the screen is in manual entry mode
+        photoBusy = viewModel.photoBusy, //check if photo operation is currently in progress
+        photoError = viewModel.photoError, //error message related to taking or selecting a photo
+        cameraAvailable = cameraAvailable, // tells the screen whether camera hardware is available
         onSpeciesNameChange = viewModel::onSpeciesNameChange,
         onNicknameChange = viewModel::onNicknameChange,
         onLocationChange = viewModel::onLocationChange,
         onIntervalChange = viewModel::onIntervalChange,
         onLightChange = viewModel::onLightChange,
         onTakePhoto = {
-            try {
+            try { // attaempt to launch the camera with URI given by viewmodel
                 cameraLauncher.launch(viewModel.prepareCameraShot())
-            } catch (e: ActivityNotFoundException) {
-                viewModel.onCameraUnavailable()
+            } catch (e: ActivityNotFoundException) { //handle the case where the required camera activity cannot be found
+                viewModel.onCameraUnavailable() //informs the viewmodel that the camera is unavailable
             }
         },
         onPickPhoto = {
-            galleryLauncher.launch(
+            galleryLauncher.launch( //opens the system photo picker and restricts selection to images
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
             )
         },
-        onRemovePhoto = viewModel::removePhoto,
+        onRemovePhoto = viewModel::removePhoto, //passes the viewmodel function
         onSave = {
-            val plant = viewModel.buildPlant()          // null if the form isn't valid (errors are shown)
+            val plant = viewModel.buildPlant() // check the current form data and try to build a plant object, return null if cannot
             if (plant != null) {
-                onSave(plant)                           // the caller stores it and navigates away
+                onSave(plant) //pass completed plant object to caller
                 viewModel.onPlantSaved()
             }
         },

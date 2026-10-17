@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -17,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.example.plantcarecompanion.ui.BackTopBar
 import com.example.plantcarecompanion.ui.PlantCareViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -40,7 +41,8 @@ fun PlantDetailsScreen(
     vm: PlantCareViewModel,
     onCareLogClick: (Int) -> Unit,
     onEditClick: (Int) -> Unit,
-    onDeleted: () -> Unit
+    onDeleted: () -> Unit,
+    onBack: () -> Unit
 ) {
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showCareDialog by rememberSaveable { mutableStateOf(false) }
@@ -59,18 +61,22 @@ fun PlantDetailsScreen(
 
     val plant = vm.selectedPlant
 
-    if (plant == null) {
-        Text("Loading plant...")
-        return
-    }
+    // Title with the plant's name once it's loaded; a generic title for the brief loading flash.
+    Scaffold(
+        topBar = { BackTopBar(title = plant?.nickname ?: "Plant", onBack = onBack) }
+    ) { innerPadding ->
+        if (plant == null) {
+            Text("Loading plant...", modifier = Modifier.padding(innerPadding).padding(16.dp))
+            return@Scaffold
+        }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
 
         if (plant.imageUri != null) {
             AsyncImage(
@@ -285,4 +291,5 @@ fun PlantDetailsScreen(
             }
         )
     }
+    } // end Scaffold content
 }

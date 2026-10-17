@@ -6,12 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.plantcarecompanion.ui.BackTopBar
 import com.example.plantcarecompanion.ui.PlantCareViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -44,18 +45,22 @@ fun EditPlantScreen(
         }
     }
 
-    if (plant == null) {
-        Text("Loading plant...")
-        return
-    }
+    // onBack already existed (wired to the Cancel button below) — reuse it for the top bar too.
+    Scaffold(
+        topBar = { BackTopBar(title = "Edit Plant", onBack = onBack) }
+    ) { innerPadding ->
+        if (plant == null) {
+            Text("Loading plant...", modifier = Modifier.padding(innerPadding).padding(16.dp))
+            return@Scaffold
+        }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
         Text(
             text = "Edit Plant",
             style = MaterialTheme.typography.headlineMedium
@@ -140,4 +145,5 @@ fun EditPlantScreen(
             )
         }
     }
+    } // end Scaffold content
 }

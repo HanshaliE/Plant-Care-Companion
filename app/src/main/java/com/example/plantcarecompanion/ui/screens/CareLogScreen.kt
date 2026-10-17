@@ -6,19 +6,20 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.plantcarecompanion.data.local.entity.CareLogEntry
+import com.example.plantcarecompanion.ui.BackTopBar
 import com.example.plantcarecompanion.ui.PlantCareViewModel
 import java.text.DateFormat
 import java.util.Date
@@ -27,16 +28,20 @@ import java.util.Date
 @Composable
 fun CareLogScreen(
     plantId: Int,
-    vm: PlantCareViewModel
+    vm: PlantCareViewModel,
+    onBack: () -> Unit
 ) {
     LaunchedEffect(plantId) {
         vm.loadCareLogs(plantId)
     }
 
+    Scaffold(
+        topBar = { BackTopBar(title = "Care History", onBack = onBack) }
+    ) { innerPadding ->
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .safeDrawingPadding(),
+            .padding(innerPadding),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -123,6 +128,7 @@ fun CareLogScreen(
             }
         }
     }
+    } // end Scaffold content
 }
 
 @Composable

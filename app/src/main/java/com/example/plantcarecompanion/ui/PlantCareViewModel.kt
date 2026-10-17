@@ -28,6 +28,15 @@ class PlantCareViewModel(
     var selectedPlant by mutableStateOf<Plant?>(null)
         private set
 
+    var showCareDialog by mutableStateOf(false)
+        private set
+
+    var showDeleteDialog by mutableStateOf(false)
+        private set
+
+    var selectedCareType by mutableStateOf("Watered")
+        private set
+
     var searchQuery by mutableStateOf("")
         private set
 
@@ -109,12 +118,35 @@ class PlantCareViewModel(
         careLogNote = ""
     }
 
+    fun openCareDialog() {
+        selectedCareType = "Watered"
+        showCareDialog = true
+    }
+
+    fun closeCareDialog() {
+        showCareDialog = false
+        selectedCareType = "Watered"
+        clearCareLogNote()
+    }
+
+    fun updateSelectedCareType(type: String) {
+        selectedCareType = type
+    }
+
+    fun openDeleteDialog() {
+        showDeleteDialog = true
+    }
+
+    fun closeDeleteDialog() {
+        showDeleteDialog = false
+    }
+
     //care log entry for notes such as watering
     fun addCareAction(plantId: Int, careType: String) {
         addCareLog(
             CareLogEntry(
                 plantId = plantId, //identifies which plant recieves the care
-                careType = careType, //describes the action, such as watered
+                careType = careType, //describs the action, such as watered
                 notes = careLogNote.trim().ifBlank { null } //removes unnecessary spaces from the note. stores null if note is empty or contains whitespaces
             )
         )
@@ -122,7 +154,7 @@ class PlantCareViewModel(
         clearCareLogNote() //clears the note field after stating the save operation
     }
 
-    //returns the plant list after applying the current search query and sorting option
+    //returns the plant list after applying the current search qurey and sorting option
     val filteredPlants: List<Plant>
         get() {
             //if search field is empty or contains only whitespace, include all plants in the filtered list
@@ -153,7 +185,7 @@ class PlantCareViewModel(
         editingPlantId = plant.id //remember which plant is being edited
 
         editNickname = plant.nickname //copy the current database values into the editable fields
-        editLocation = plant.location ?: "" //convert the null location to an empty string for the text field
+        editLocation = plant.location ?: "" //convrt the null location to an empty string for the text field
         editWateringInterval = plant.wateringIntervalDays.toString() //convert the integer watering interval to text so it can be displayed and edited in a text field
         editLightRequirement = plant.lightRequirement ?: "" //convert a null light requirement into an empty string
     }

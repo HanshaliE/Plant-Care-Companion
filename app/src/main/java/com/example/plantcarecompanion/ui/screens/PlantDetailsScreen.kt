@@ -21,10 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -44,15 +40,7 @@ fun PlantDetailsScreen(
     onDeleted: () -> Unit,
     onBack: () -> Unit
 ) {
-    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var showCareDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedCareType by rememberSaveable { mutableStateOf("Watered") }
 
-    fun closeCareDialog() {
-        showCareDialog = false
-        selectedCareType = "Watered"
-        vm.clearCareLogNote()
-    }
 
     LaunchedEffect(plantId) {
         vm.loadPlant(plantId)
@@ -146,22 +134,21 @@ fun PlantDetailsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { showDeleteDialog = true }
+            onClick = { vm.openDeleteDialog() }
         ) {
             Text("Delete Plant")
         }
 
         Spacer(Modifier.height(12.dp))
 
-        Button(
-            onClick = {
-                vm.clearCareLogNote()
-                selectedCareType = "Watered"
-                showCareDialog = true
+            Button(
+                onClick = {
+                    vm.clearCareLogNote()
+                    vm.openCareDialog()
+                }
+            ) {
+                Text("Log Care Activity")
             }
-        ) {
-            Text("Log Care Activity")
-        }
 
         Spacer(Modifier.height(8.dp))
 
@@ -173,9 +160,9 @@ fun PlantDetailsScreen(
     }
 
     // Dialog for logging a new care activity
-    if (showCareDialog) {
+        if (vm.showCareDialog) {
         AlertDialog(
-            onDismissRequest = { closeCareDialog() },
+            onDismissRequest = { vm.closeCareDialog() },
 
             title = {
                 Text("Log Care Activity")
@@ -198,14 +185,14 @@ fun PlantDetailsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    selectedCareType = type
+                                    vm.updateSelectedCareType(type)
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
-                                selected = selectedCareType == type,
+                                selected = vm.selectedCareType == type,
                                 onClick = {
-                                    selectedCareType = type
+                                    vm.updateSelectedCareType(type)
                                 }
                             )
 
@@ -232,9 +219,9 @@ fun PlantDetailsScreen(
                     onClick = {
                         vm.addCareAction(
                             plant.id,
-                            selectedCareType
+                            vm.selectedCareType
                         )
-                        closeCareDialog()
+                        vm.closeCareDialog()
                     }
                 ) {
                     Text("Save")
@@ -243,7 +230,7 @@ fun PlantDetailsScreen(
 
             dismissButton = {
                 TextButton(
-                    onClick = { closeCareDialog() }
+                    onClick = { vm.closeCareDialog() }
                 ) {
                     Text("Cancel")
                 }
@@ -252,10 +239,10 @@ fun PlantDetailsScreen(
     }
 
     // Confirmation before deleting a plant
-    if (showDeleteDialog) {
+        if (vm.showDeleteDialog) {
         AlertDialog(
             onDismissRequest = {
-                showDeleteDialog = false
+                vm.closeDeleteDialog()
             },
 
             title = {
@@ -272,7 +259,7 @@ fun PlantDetailsScreen(
                 TextButton(
                     onClick = {
                         vm.deletePlant(plant)
-                        showDeleteDialog = false
+                        vm.closeDeleteDialog()
                         onDeleted()
                     }
                 ) {
@@ -283,7 +270,7 @@ fun PlantDetailsScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showDeleteDialog = false
+                        vm.closeDeleteDialog()
                     }
                 ) {
                     Text("Cancel")
@@ -291,5 +278,5 @@ fun PlantDetailsScreen(
             }
         )
     }
-    } // end Scaffold content
+    }
 }

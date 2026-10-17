@@ -47,16 +47,12 @@ import com.example.plantcarecompanion.domain.MAX_INTERVAL_DAYS
 import com.example.plantcarecompanion.domain.MIN_INTERVAL_DAYS
 import com.example.plantcarecompanion.domain.PlantDraft
 
-/**
- * Stateless form (Lecture 3 hoisting): everything it shows comes in as a parameter,
- * every change goes out as a callback. [AddPlantRoute] owns the state and the camera/gallery launchers.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPlantScreen(
-    draft: PlantDraft,
-    errors: DraftErrors,
-    careInfo: CareInfoState,
+    draft: PlantDraft, //contains current form values
+    errors: DraftErrors, // errors contains validation errors for the form
+    careInfo: CareInfoState, // status of the suggested plant care info
     isManual: Boolean,
     photoBusy: Boolean,
     photoError: String?,
@@ -72,9 +68,9 @@ fun AddPlantScreen(
     onSave: () -> Unit,
     onBack: () -> Unit
 ) {
-    Scaffold(
+    Scaffold( //provides the main structure of the screen, seperating top app bar form the main content
         topBar = {
-            TopAppBar(
+            TopAppBar( // creates top bar with title and navigation button
                 title = { Text("Add plant") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -92,7 +88,7 @@ fun AddPlantScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = 600.dp)            // stays readable on tablets
+                    .widthIn(max = 600.dp)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
                     .imePadding()
@@ -109,28 +105,30 @@ fun AddPlantScreen(
                     onRemovePhoto = onRemovePhoto
                 )
 
-                if (isManual) {
-                    OutlinedTextField(
-                        value = draft.speciesName,
-                        onValueChange = onSpeciesNameChange,
+                if (isManual) { //shows an editable species name field when manual entry is enabled
+                    OutlinedTextField( //allows the user to enter the plant's species name
+                        value = draft.speciesName, //displays the current species name from the draft
+                        onValueChange = onSpeciesNameChange, //allows user to update species name
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         label = { Text("Plant species") },
                         placeholder = { Text("e.g. Peace Lily") },
-                        isError = errors.species,
+                        isError = errors.species, //highlights the field when species validation fails
                         supportingText = { if (errors.species) Text("Enter the plant's name") },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                     )
                 } else {
                     Text(
-                        text = draft.speciesName.ifBlank { "Loading…" },
+                        //if species has been selected, display its name instead of asking user to edit it here
+                        text = draft.speciesName.ifBlank { "Loading…" }, //show loading if its blank
                         style = MaterialTheme.typography.headlineSmall
                     )
                 }
 
+                //show current status of plant care info
                 CareInfoStatus(careInfo)
 
-                OutlinedTextField(
+                OutlinedTextField( //give input fields to change
                     value = draft.nickname,
                     onValueChange = onNicknameChange,
                     modifier = Modifier.fillMaxWidth(),
@@ -193,14 +191,14 @@ fun AddPlantScreen(
 
 @Composable
 private fun CareInfoStatus(state: CareInfoState) {
-    when (state) {
-        CareInfoState.Idle -> Unit
+    when (state) { //selects UI to display based on current care information stare
+        CareInfoState.Idle -> Unit // nothign is displayed while care information is idle
 
         CareInfoState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(8.dp))
             Text("Fetching care info…", style = MaterialTheme.typography.bodySmall)
-        }
+        } //displays loading indicator
 
         CareInfoState.Loaded -> Text(
             "Suggested watering and light filled in — adjust them if your plant needs something different.",
@@ -255,7 +253,6 @@ private fun PhotoSection(
             if (busy) CircularProgressIndicator()
         }
 
-        // weight(1f) = two equal buttons at any screen width (Lecture 4)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
                 onClick = onTakePhoto,

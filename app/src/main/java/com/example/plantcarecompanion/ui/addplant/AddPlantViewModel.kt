@@ -21,32 +21,27 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
-/**
- * State + decisions for the whole "add a plant" flow: Species Search -> Add Plant.
- * One instance is shared by both screens (created above the NavHost, Lecture 5), so the typed query,
- * the results and the half-filled form all survive rotation and moving between the two screens.
- *
- * It never touches Retrofit or Room directly — only [SpeciesRepository] — and it never saves the plant
- * itself: [buildPlant] hands back a validated Plant and the caller (hoisted callback) stores it.
- */
+//viewmodel manages add plant screens data and business logic. It survives configuration changes such as screen rotations
 class AddPlantViewModel(
-    private val repository: SpeciesRepository,
-    private val photos: PlantPhotoStorage
+    private val repository: SpeciesRepository,  // repo provides plant species data and search funtionality
+    private val photos: PlantPhotoStorage //photo storage manages the plants image files
 ) : ViewModel() {
 
-    // ---------- search ----------
 
-    var query by mutableStateOf("")
+
+    var query by mutableStateOf("") //stores the text currently enteredin the species search field
         private set
 
-    var searchState by mutableStateOf<SearchUiState>(SearchUiState.Idle)
+    var searchState by mutableStateOf<SearchUiState>(SearchUiState.Idle) //stores the state of the current search
         private set
 
-    /** Shown while the search box is empty — available with zero network. */
+    //provides locally available plant species for suggestions
     val suggestions: List<Species> = LocalPlantCatalog.species
 
+    //stores the currently running search coroutine, it allows an earlier search to be cancelled when a query is entered
     private var searchJob: Job? = null
 
+    //called whenever user types or changes the search query
     fun onQueryChange(newQuery: String) {
         query = newQuery
         searchJob?.cancel()

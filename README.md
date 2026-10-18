@@ -38,6 +38,26 @@ The work was divided between the three of us and each member chose the area they
    - Splash screen and adaptive app icon matching the app theme
    - Back arrows applied to the sub-screens and the reminders state-persistence fixes
 
+## App description
+
+1. **Users** - people who keep several houseplants and currently rely on memory, phone notes or calendar alerts to remember watering.
+2. **Core task** - record a plant with its watering schedule, get a reminder when it is due and log each care action.
+3. **Data** - a Plant has many care log entries (Room, linked by plantId). Species care information comes from the Perenual API and is cached locally in Room. Settings and profile values are in DataStore.
+4. **Scope** - works fully offline; user accounts, login and cloud sync are out of scope.
+
+## Demonstrating network and device features
+
+**Network (live species search)**
+1. With a key in `local.properties`: Plants → Add Plant → search "monstera". Results without a "Built-in" tag come from the Perenual API.
+2. Offline fallback: turn on airplane mode in the emulator (swipe down, Airplane mode) and search again. The screen shows the reason and returns cached results plus the built-in catalog.
+3. No key: remove the key line, rebuild, and search. The app shows "Live plant search isn't set up on this device." and uses the built-in catalog.
+
+**Device features**
+1. Notifications: Reminders -> turn the Watering reminders switch on and allow the permission (Android 13+). Deny it once to see the message and that nothing is scheduled.
+2. Camera: Profile -> Edit -> take a photo (the emulator camera shows a virtual scene). The same option is on the Add Plant screen.
+3. Photo picker: choose a photo from the gallery. Drag an image onto the emulator window first if its gallery is empty.
+4. Cancelling the camera or the picker leaves the previous photo unchanged.
+
 ## Requirements
 
 - **Android Studio** - Quail 3 | 2026.1.3 (build AI-261.26222.65.2613.15948027) the version used for development

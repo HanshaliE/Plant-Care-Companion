@@ -49,9 +49,9 @@ fun PlantDetailsScreen(
 
     val plant = vm.selectedPlant
 
-    // Title with the plant's name once it's loaded; a generic title for the brief loading flash.
+    // Top bar title is fixed; the plant's name is shown as the heading below instead.
     Scaffold(
-        topBar = { BackTopBar(title = plant?.nickname ?: "Plant", onBack = onBack) }
+        topBar = { BackTopBar(title = "Plant details", onBack = onBack) }
     ) { innerPadding ->
         if (plant == null) {
             Text("Loading plant...", modifier = Modifier.padding(innerPadding).padding(16.dp))
@@ -84,10 +84,15 @@ fun PlantDetailsScreen(
             style = MaterialTheme.typography.headlineMedium
         )
 
-        Text(
-            text = plant.speciesName,
-            style = MaterialTheme.typography.titleMedium
-        )
+        // Only show the species line when it adds information the heading doesn't already carry.
+        if (plant.speciesName.isNotBlank() &&
+            !plant.speciesName.trim().equals(plant.nickname.trim(), ignoreCase = true)
+        ) {
+            Text(
+                text = plant.speciesName,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

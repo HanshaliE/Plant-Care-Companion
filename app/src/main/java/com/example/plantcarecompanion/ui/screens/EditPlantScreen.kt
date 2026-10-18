@@ -61,13 +61,7 @@ fun EditPlantScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-        Text(
-            text = "Edit Plant",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(Modifier.height(16.dp))
-
+        // Heading removed here since the top bar already shows "Edit Plant".
         Text(
             text = "Species: ${plant.speciesName}",
             style = MaterialTheme.typography.bodyLarge
